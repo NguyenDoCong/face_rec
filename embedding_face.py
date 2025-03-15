@@ -17,7 +17,7 @@ if not os.path.exists(model_path):
 # Load model
 net = cv2.dnn.readNetFromONNX(model_path)
 
-def get_embedding(image,i=0):
+def get_embedding(face_crop):
     """
     Get face embedding from image
     Args:
@@ -26,26 +26,12 @@ def get_embedding(image,i=0):
         embedding vector
     """
     # Nếu input là đường dẫn, đọc ảnh
-    if isinstance(image, str):
-        if not os.path.exists(image):
-            image = "uploads/" + image
-        image = cv2.imread(image)
+    if isinstance(face_crop, str):
+        face_crop = cv2.imread(face_crop)
     
-    if image is None:
+    if face_crop is None:
         raise Exception("Cannot read image")
     
-    frame_height = image.shape[0]
-    frame_width = image.shape[1]
-    
-    result = detect_face(image)
-    
-    x_top_left = int(result[0, 0, i, 3] * frame_width)
-    y_top_left = int(result[0, 0, i, 4] * frame_height)
-    x_bottom_right  = int(result[0, 0, i, 5] * frame_width)
-    y_bottom_right  = int(result[0, 0, i, 6] * frame_height)
-
-    face_crop = image[y_top_left:y_bottom_right, x_top_left:x_bottom_right]
-
     # Resize và chuẩn hóa ảnh
     blob = cv2.dnn.blobFromImage(face_crop, 1.0/127.5, (112, 112), (127.5, 127.5, 127.5), swapRB=True)
     

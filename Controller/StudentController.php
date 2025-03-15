@@ -52,18 +52,47 @@ class StudentController
                 $this->sendError("Không thể lưu file");
             }
 
-            $command = sprintf(
-                'cd %s && python embedding_face.py %s 2>&1',
-                dirname(__DIR__),
-                $new_filename
-            );
-
-            $embedding_faces = shell_exec($command);
-            if (empty(trim($embedding_faces))) {
-                $this->sendError("Không thể tạo embedding face");
+            // Check if the file exists before calling detect.py
+            if (!file_exists($file_path)) {
+                $this->sendError("File không tồn tại");
             }
 
-            $embedding_face_json = json_encode(array_map('floatval', explode(',', trim($embedding_faces))));
+            $command = sprintf(
+                'cd %s && python detect.py %s',
+                dirname(__DIR__),
+                $file_path // Sử dụng đường dẫn đầy đủ của tệp hình ảnh
+            );
+
+            $output = shell_exec($command);
+            if (empty(trim($output))) {
+                $this->sendError("Không thể tạo faces");
+            }
+
+            // Ghi giá trị của $output vào tệp nhật ký lỗi của PHP
+            error_log("Detect face output: " . $output);
+
+            // Lấy giá trị đầu tiên trả về
+            $face_path = trim($output);
+            $full_face_path = dirname(__DIR__) . '/' . $face_path; // Đường dẫn đầy đủ của tệp face.jpg
+
+            // Check if the face image file exists before calling embedding_face.py
+            if (!file_exists($full_face_path)) {
+                $this->sendError("File face không tồn tại");
+            }
+
+            $command = sprintf(
+                'python embedding_face.py %s',
+                escapeshellarg($full_face_path) // Đảm bảo rằng đường dẫn tệp được truyền đúng cách
+            );
+
+            $embedding_face = shell_exec($command);
+            if (empty(trim($embedding_face))) {
+                $this->sendError("Không thể tạo embedding");
+            }
+
+            error_log("embedding_face: " . $embedding_face);
+
+            $embedding_face_json = json_encode(array_map('floatval', explode(',', $embedding_face)));
             $student = new Student($student_id, $name, $embedding_face_json, 1);
             if (!$this->studentDB->create($student)) {
                 $this->sendError("Không thể lưu thông tin sinh viên");
@@ -90,11 +119,13 @@ class StudentController
     {
         header('Content-Type: application/json');
 
-        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-            http_response_code(405);
-            echo json_encode(['success' => false, 'message' => 'Method not allowed']);
-            return;
-        }
+        // try comment this block
+
+        // if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+        //     http_response_code(405);
+        //     echo json_encode(['success' => false, 'message' => 'Method not allowed']);
+        //     return;
+        // }
 
         try {
             $data = json_decode(file_get_contents('php://input'), true);

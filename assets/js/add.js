@@ -41,15 +41,20 @@ $("#addForm").submit(function (event) {
       "X-Requested-With": "XMLHttpRequest",
     },
     success: function (response) {
-      if (typeof response === "object") {
-        handleResponse(response);
-      } else {
-        const jsonResponse = JSON.parse(response);
-        handleResponse(jsonResponse);
+      try {
+        if (typeof response === "object") {
+          handleResponse(response);
+        } else {
+          const jsonResponse = JSON.parse(response);
+          handleResponse(jsonResponse);
+        }
+      } catch (e) {
+        console.error("Error parsing response:", e);
+        alert("Có lỗi xảy ra khi xử lý response từ server");
       }
     },
     error: function (xhr, status, error) {
-      alert("Lỗi kết nối đến server: " + error + "\nStatus: " + status);
+      console.log("Lỗi kết nối đến server: " + error + "\nStatus: " + status);
     },
     complete: function () {
       submitBtn.prop("disabled", false).text(originalText);
